@@ -4,7 +4,6 @@ import argparse
 import json
 import os.path as osp
 import numpy as np
-import re 
 
 script_dir = osp.dirname(__file__)
 
@@ -21,6 +20,7 @@ def main():
 	df = pd.read_csv(src_file)
 	
 	dict_1 = verbosity(df)
+	dict_2 = mention(df)
 	dict_3 = followon(df)
 
 def verbosity(df):	
@@ -41,61 +41,122 @@ def verbosity(df):
 	# get all rows that are speech acts
 	df_verb = df_verb[df_verb.speech_act != False]
 	
-	speech_ts = check_verb(df,'Twilight Sparkle')
-	speech_aj = check_verb(df,'Applejack')
-	speech_rr = check_verb(df,'Rarity')
-	speech_pp = check_verb(df,'Pinkie Pie')
-	speech_rd = check_verb(df,'Rainbow Dash')
-	speech_fs = check_verb(df,'Fluttershy')
+	speech_ts = check_verb(df_verb,'Twilight Sparkle')
+	speech_aj = check_verb(df_verb,'Applejack')
+	speech_rr = check_verb(df_verb,'Rarity')
+	speech_pp = check_verb(df_verb,'Pinkie Pie')
+	speech_rd = check_verb(df_verb,'Rainbow Dash')
+	speech_fs = check_verb(df_verb,'Fluttershy')
 		
+	speech_sum = speech_ts + speech_aj + speech_rr + speech_pp + speech_rd + speech_fs
+	
+	# get ratio
+	speech_ts = round(speech_ts/speech_sum,2)
+	speech_aj = round(speech_aj/speech_sum,2)
+	speech_rr = round(speech_rr/speech_sum,2)
+	speech_pp = round(speech_pp/speech_sum,2)
+	speech_rd = round(speech_rd/speech_sum,2)
+	speech_fs = round(speech_fs/speech_sum,2)
+
 	# create dictionary to store speech acts
-	verbosity = dict(twilight=speech_ts,applejack=speech_aj,rarity=speech_rr,pinky=speech_pp,rainbow=speech_rd,fluttershy=speech_fs) 	
+	verbosity = dict(twilight=speech_ts,applejack=speech_aj,rarity=speech_rr,pinkie=speech_pp,rainbow=speech_rd,fluttershy=speech_fs) 	
 	
 	print(verbosity)
 	return(verbosity)
 
 
 def check_verb(df,pony_speaker):
-	x = df['pony'].str.contains(pony_speaker,flags=re.IGNORECASE,regex = True)
-	
+	# true if pony column content is speaker (case insensitive comparison)
+	x = df['pony'].str.lower() == pony_speaker.lower()
 	# get all true
 	speech_pony = x.values.sum()
-	# sum of all rows where speaker is pony_speaker
-	speech_sum = len(df.index)
-	# ratio
-	speech_pony = round(speech_pony/speech_sum,2)
 	return(speech_pony)
 
-"""
+
 def mention(df):
 	
-			
+	df_mt = df.copy()
+
+	# df_mt = filtered dataframe by speech act
+	#for i in range(1,len(df)):
+	#	if df['title'][i]==df['title'][i-1] and df['pony'][i].lower()==df['pony'][i-1].lower():
+	#		df_mt['dialog'][i-1] += df_mt['dialog'][i]
+	#		df_mt.drop([i],inplace = True)
+
+	mention_ts = lookup(df_mt,'Twilight Sparkle','twilight')
+	mention_aj = lookup(df_mt,'Applejack','applejack')
+	mention_rr = lookup(df_mt,'Rarity','rarity')
+	mention_pp = lookup(df_mt,'Pinkie Pie','pinkie')
+	mention_rd = lookup(df_mt,'Rainbow Dash','rainbow')
+	mention_fs = lookup(df_mt,'Fluttershy','fluttershy')
+
+	mention = dict(twilight=mention_ts,applejack=mention_aj,rarity=mention_rr,pinkie=mention_pp,rainbow=mention_rd,fluttershy=mention_fs)
+	
+	print(mention)	
 	return mention
 
-def lookup (df, pony_speaker):
-	# get all rows where speaker is ...
-	filtered_df = df[(df['pony']==pony_speaker)]
-	
-	# loop through all those rows
-	for i in range(len(df_fol)):
-		for word in 
-"""
 
+def lookup (df, pony_speaker,pony_speaker_abbr):
+	# this function takes a speaker and a pony, outputs dict of speaker mention pony
+	
+	pony_str_abbr = ['twilight','applejack','rarity','pinkie','rainbow','fluttershy']
+	pony_key_abbr = pony_str_abbr[:]
+	pony_key_abbr.remove(pony_speaker_abbr)
+
+	# remove speaker from pony_str
+	pony_str = ['Twilight Sparkle','Applejack','Rarity','Pinkie Pie','Rainbow Dash','Fluttershy'] 
+	pony_key = pony_str[:]
+	pony_str.remove(pony_speaker)
+	 
+	pony_count = []
+	for i in pony_key:
+		
+		# determine keywords based on pony
+		if i == 'Twilight Sparkle':
+			keywords = ['Twilight','Sparkle','Twilight Sparkle']
+		if i == 'Applejack':
+			keywords = ['Applejack']
+		if i == 'Rarity':
+			keywords = ['Rarity']
+		if i == 'Pinkie Pie':
+			keywords = ['Pinkie','Pie','Pinkie Pie']
+		if i == 'Rainbow Dash':
+			keywords = ['Rainbow','Dash','Rainbow Dash']
+		if i == 'Fluttershy':
+			keywords = ['Fluttershy']
+
+		# filtered_df = dataframe where pony column has only pony_speaker
+		filtered_df = df[(df['pony'].str.lower()==pony_speaker.lower())]	
+		
+		# loop through keywords of a pony, get number of mentions(speaker,pony[i])
+		mention_df = filtered_df[filtered_df['dialog'].str.contains('|'.join(keywords))]
+		pony_count.append(len(mention_df))
+	
+	pony_count_ratio = []
+	for q in pony_count:
+		pony_count_ratio.append(round(q/sum(pony_count),2)) 	
+	# zip
+	pony_dict = dict(zip(pony_key_abbr,pony_count_ratio)) 
+	return pony_dict
+	
 
 def followon(df):
-
-	# iterate through rows, if episode same, speaker is pony, prev speaker is different pony, then add is_follow = true
-
 	df_fol = df.copy()
 	pony_str = ['Twilight Sparkle','Applejack','Rarity','Pinkie Pie','Rainbow Dash','Fluttershy']
 	
-	# first elem is not follow-up
+	# fol_list stores T/F of is_follow column (first elem is not follow-up)
 	fol_list = [False]
-
+	
+	# iterate through rows, if episode same, speaker is pony, prev speaker is different pony, then is_follow = true
 	for i in range(1,len(df_fol)):
-		if df_fol['title'][i-1] == df_fol['title'][i] and df_fol['pony'][i-1] != df['pony'][i] and df_fol['pony'][i-1] in pony_str and df_fol['pony'][i] in pony_str:
-			# record who the pony follows (prev pony)
-			fol_list.append(df_fol['pony'][i-1])
+		if df_fol['title'][i-1] == df_fol['title'][i] and df_fol['pony'][i-1] != df['pony'][i] and df_fol['pony'][i] in pony_str:
+			# record who the pony follows
+			if df_fol['pony'][i-1] in pony_str:
+				# if is a pony, is_follow = prev pony
+				fol_list.append(df_fol['pony'][i-1])
+			else:
+				# if not a pony, is_follow = other
+				fol_list.append('other')
 		else: 
 			fol_list.append(False)
 
@@ -104,13 +165,13 @@ def followon(df):
 	# count number of follow-ups
 	df_fol = df_fol.loc[df_fol['is_follow'] != False]
 	
-	pony_str_abbr = ['twilight','applejack','rarity','pinky','rainbow','fluttershy']
-	
+	pony_str_abbr = ['twilight','applejack','rarity','pinkie','rainbow','fluttershy','other']
+	 
 	# compute each dictionary
 	ts =follow_dict('Twilight Sparkle','twilight',df_fol,pony_str,pony_str_abbr)
 	aj =follow_dict('Applejack','applejack',df_fol,pony_str,pony_str_abbr)
 	rr =follow_dict('Rarity','rarity',df_fol,pony_str,pony_str_abbr)
-	pp =follow_dict('Pinkie Pie','pinky',df_fol,pony_str,pony_str_abbr)
+	pp =follow_dict('Pinkie Pie','pinkie',df_fol,pony_str,pony_str_abbr)
 	rd =follow_dict('Rainbow Dash','rainbow',df_fol,pony_str,pony_str_abbr)
 	fs =follow_dict('Fluttershy','fluttershy',df_fol,pony_str,pony_str_abbr)
 	
@@ -122,17 +183,20 @@ def followon(df):
 	# a function takes a pony and a df as input and outputs a dictionary
 def follow_dict (pony_speaker,pony_speaker_abbr,df,pony_str,pony_str_abbr):
 
-	# pony_key = name of all ponies except speaker
+	# pony_key = name of all ponies except speaker + other
 	# pony_key_abbr = actual key (abbreviated version)
 	pony_key = pony_str[:]
 	pony_key.remove(pony_speaker)
-	pony_value = []
+	pony_key.append('other')
 
 	pony_key_abbr = pony_str_abbr[:]
 	pony_key_abbr.remove(pony_speaker_abbr)
+	
+	pony_value =[]
+
 	for p in pony_key:
 		# filter pony = pony_speaker and is_follow = p
-		filtered_df = df[(df['pony']==pony_speaker) & (df['is_follow']==p)]
+		filtered_df = df[(df['pony'].str.lower()==pony_speaker.lower()) & (df['is_follow']==p)]
 		# get the count
 		p_count = len(filtered_df.index) 
 		pony_value.append(p_count)
@@ -146,7 +210,6 @@ def follow_dict (pony_speaker,pony_speaker_abbr,df,pony_str,pony_str_abbr):
 	pony_dict = dict(zip(pony_key_abbr,pony_value_ratio))
 	return pony_dict
 	
-	#df['content_length'] = df.apply(lambda row: len(row['content']),axis = 1)
-
+	
 if __name__ == '__main__':
 	main()
