@@ -103,9 +103,8 @@ def lookup (df, pony_speaker,pony_speaker_abbr):
 		filtered_df = df[(df['pony'].str.lower()==pony_speaker.lower())]	
 		
 		# loop through keywords of a pony, get number of mentions(speaker,pony[i])
-		#mention_df = filtered_df[filtered_df['dialog'].str.contains('|'.join(keywords))]
 		mention_count = filtered_df.dialog.str.count('|'.join(keywords)).sum()
-		
+	
 		if n == 2:
 			mention_count = mention_count - filtered_df.dialog.str.count(i).sum()
 		pony_count.append(mention_count)
@@ -234,17 +233,19 @@ def gen_nd(df,pony_speaker,dict_word):
 			# remove if is dictionary word
 			nd_list.append(tot_list[i].lower())
 	
-	nd_series = pd.Series(nd_list)
+	if len(nd_list) > 0:	
+		nd_series = pd.Series(nd_list)
 	
-	# count the occurence of non-dict words
-	count = nd_series.value_counts()
+		# count the occurence of non-dict words
+		count = nd_series.value_counts()
 	
-	# get list of non-dict words (descending by count)
-	nd_list = list(count.index)
+		# get list of non-dict words (descending by count)
+		nd_list = list(count.index)
 	
-	if len(nd_list) <=5:
-		# number of non-dict word <= 5
-		return nd_list
-	else:
-		# number of non-dict word > 5
-		return nd_list[0:5]
+		if len(nd_list) <=5:
+			# number of non-dict word <= 5
+			return nd_list
+		else:
+			# number of non-dict word > 5
+			return nd_list[0:5]
+	else: return []

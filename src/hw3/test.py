@@ -1,6 +1,6 @@
 import unittest
 
-from pony_test import *
+from tests.pony_test import *
 
 if __name__ == '__main__':
 	unittest.main()
