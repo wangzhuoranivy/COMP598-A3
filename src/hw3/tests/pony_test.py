@@ -21,8 +21,15 @@ class PonyTestCase(unittest.TestCase):
 		check_dict = isinstance(values,dict)
 		self.assertTrue(check_dict)
 	
-	# check correct value of verbosity for Twilight Sparkle
+	# check if sum = 1 in verbosity
 	def test_verbosity2(self):
+		values = verbosity(self.df)
+		total = sum(list(values.values()))
+		check_sum = (abs(total-1)<=0.01)
+		self.assertTrue(check_sum)
+
+	# check correct value of verbosity for Twilight Sparkle
+	def test_verbosity3(self):
 		values = verbosity(self.df)
 		ts_verb = values['twilight']
 		self.assertEqual(ts_verb,round(1/7,2))
@@ -35,14 +42,14 @@ class PonyTestCase(unittest.TestCase):
 		self.assertEqual([dict_len,sub_dict_len],[6,5])
 
 	# check correct value of mentions for Pinkie Pie (edge case)
-	def test_mention(self):
+	def test_mention2(self):
 		values = mention(self.df)
 		pp_mentions = values['pinkie']
 		correct_ans = dict(twilight=0,applejack=0,rarity=0,rainbow=0,fluttershy=0)
 		self.assertEqual(pp_mentions,correct_ans)
 	
 	# check correct value of mentions for Twilight mention Rainbow 
-	def test_mention(self):
+	def test_mention3(self):
 		values = mention(self.df)
 		ts_mentions = values['twilight']['rainbow']
 		self.assertEqual(ts_mentions,0.5)
@@ -73,7 +80,6 @@ class PonyTestCase(unittest.TestCase):
 		fs_nondict =  values['pinkie']
 		self.assertEqual(fs_nondict,[])
 	
-
-
+		
 
 	
