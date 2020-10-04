@@ -28,6 +28,12 @@ def main():
 	dict_3 = followon(df)
 	dict_4 = non_dict(df)
 	
+	dict_all = dict(verbosity=dict_1,mentions=dict_2,follow_on_comments=dict_3,non_dictionary_words=dict_4)
+	dict_json = json.dumps(dict_all,4)
+	
+	with open(args.output, 'w') as output_file:
+		output_file.write(dict_json)		
+	
 def verbosity(df):	
 	# create a copy of dataframe for verbosity	
 	df_verb = df.copy()
