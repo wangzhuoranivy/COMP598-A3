@@ -4,6 +4,7 @@ import argparse
 import json
 import os.path as osp
 import numpy as np
+import re
 
 script_dir = osp.dirname(__file__)
 
@@ -18,11 +19,15 @@ def main():
 
 	src_file = osp.join(script_dir,'..','data',f'{args.src_file}')
 	df = pd.read_csv(src_file)
+
+	# replace unicode char w/ space
+	df['dialog'] = df['dialog'].str.replace('<U\+.*>', ' ', regex=True)
 	
 	dict_1 = verbosity(df)
 	dict_2 = mention(df)
 	dict_3 = followon(df)
-
+	dict_4 = non_dict(df)
+	
 def verbosity(df):	
 	# create a copy of dataframe for verbosity	
 	df_verb = df.copy()
@@ -74,9 +79,9 @@ def check_verb(df,pony_speaker):
 
 
 def mention(df):
-	
+	# how many times a pony mentions other ponies (wrt rows)
 	df_mt = df.copy()
-
+	
 	# df_mt = filtered dataframe by speech act
 	#for i in range(1,len(df)):
 	#	if df['title'][i]==df['title'][i-1] and df['pony'][i].lower()==df['pony'][i-1].lower():
@@ -106,35 +111,49 @@ def lookup (df, pony_speaker,pony_speaker_abbr):
 	# remove speaker from pony_str
 	pony_str = ['Twilight Sparkle','Applejack','Rarity','Pinkie Pie','Rainbow Dash','Fluttershy'] 
 	pony_key = pony_str[:]
-	pony_str.remove(pony_speaker)
+	pony_key.remove(pony_speaker)
 	 
 	pony_count = []
 	for i in pony_key:
 		
 		# determine keywords based on pony
 		if i == 'Twilight Sparkle':
-			keywords = ['Twilight','Sparkle','Twilight Sparkle']
+			keywords = ['Twilight','Sparkle']
+			n = 2
 		if i == 'Applejack':
 			keywords = ['Applejack']
+			n = 1
 		if i == 'Rarity':
 			keywords = ['Rarity']
+			n = 1
 		if i == 'Pinkie Pie':
-			keywords = ['Pinkie','Pie','Pinkie Pie']
+			keywords = ['Pinkie','Pie']
+			n = 2
 		if i == 'Rainbow Dash':
-			keywords = ['Rainbow','Dash','Rainbow Dash']
+			keywords = ['Rainbow','Dash']
+			n = 2
 		if i == 'Fluttershy':
 			keywords = ['Fluttershy']
+			n = 1
 
 		# filtered_df = dataframe where pony column has only pony_speaker
 		filtered_df = df[(df['pony'].str.lower()==pony_speaker.lower())]	
 		
 		# loop through keywords of a pony, get number of mentions(speaker,pony[i])
-		mention_df = filtered_df[filtered_df['dialog'].str.contains('|'.join(keywords))]
-		pony_count.append(len(mention_df))
-	
+		#mention_df = filtered_df[filtered_df['dialog'].str.contains('|'.join(keywords))]
+		mention_count = filtered_df.dialog.str.count('|'.join(keywords)).sum()
+		
+		if n == 2:
+			mention_count = mention_count - filtered_df.dialog.str.count(i).sum()
+		pony_count.append(mention_count)
+		
 	pony_count_ratio = []
-	for q in pony_count:
-		pony_count_ratio.append(round(q/sum(pony_count),2)) 	
+	
+	if sum(pony_count) == 0:
+		pony_count_ratio = [0,0,0,0,0]
+	else:
+		for q in pony_count:
+			pony_count_ratio.append(round(q/sum(pony_count),2)) 	
 	# zip
 	pony_dict = dict(zip(pony_key_abbr,pony_count_ratio)) 
 	return pony_dict
@@ -202,14 +221,78 @@ def follow_dict (pony_speaker,pony_speaker_abbr,df,pony_str,pony_str_abbr):
 		pony_value.append(p_count)
 	
 	pony_value_ratio = []
-	for q in pony_value:
-		# get ratio
-		pony_value_ratio.append(round(q/sum(pony_value),2))
+	if sum(pony_value) == 0:
+		pony_value_ratio = [0,0,0,0,0,0]	
+	else:
+		for q in pony_value:
+			# get ratio
+			pony_value_ratio.append(round(q/sum(pony_value),2))
 	
 	# create dictionary
 	pony_dict = dict(zip(pony_key_abbr,pony_value_ratio))
 	return pony_dict
+
+def non_dict(df):
+	df_nd = df.copy()
+
+	# open dictionary word file and save all as a list
+	with open('../data/words_alpha.txt', 'r') as f:
+		dict_word = [line.strip() for line in f]
+	dict_word = set(dict_word)
 	
+	nd_ts = gen_nd(df_nd,'Twilight Sparkle',dict_word)
+	nd_aj = gen_nd(df_nd,'Applejack',dict_word)
+	nd_rr = gen_nd(df_nd,'Rarity',dict_word)
+	nd_pp = gen_nd(df_nd,'Pinkie Pie',dict_word)
+	nd_rd = gen_nd(df_nd,'Rainbow Dash',dict_word)
+	nd_fs = gen_nd(df_nd,'Fluttershy',dict_word)
 	
+	nd_dict = dict(twilight=nd_ts,applejack=nd_aj,rarity=nd_rr,pinkie=nd_pp,rainbow=nd_rd,fluttershy=nd_fs)
+	
+	print(nd_dict)
+	return nd_dict
+
+def gen_nd(df,pony_speaker,dict_word):
+	# outputs a LIST of 5 top non-dict word the pony speaker uses
+
+	# filter rows where speaker is pony_speaker
+	#filtered_df = df[df['pony'].str.lower()==pony_speaker.lower()]
+	
+	tot_list = []
+	nd_list = []
+
+	for i in range(0,len(df)):	
+		if df['pony'][i].lower()==pony_speaker.lower():
+			
+			# split dialog into lst
+			lst = re.split('\W',df['dialog'][i])
+			
+			# filter out ''
+			new_lst = list(filter(lambda x: x != '',lst))
+		
+			# append to total list
+			tot_list.extend(new_lst)
+	
+	# filter out the dictionary words
+	for i in range(len(tot_list)):
+		if tot_list[i].lower() not in dict_word:
+			# remove if is dictionary word
+			nd_list.append(tot_list[i].lower())
+	
+	nd_series = pd.Series(nd_list)
+	
+	# count the occurence of non-dict words
+	count = nd_series.value_counts()
+	
+	# get list of non-dict words (descending by count)
+	nd_list = list(count.index)
+	
+	if len(nd_list) <=5:
+		# number of non-dict word <= 5
+		return nd_list
+	else:
+		# number of non-dict word > 5
+		return nd_list[0:5]
+
 if __name__ == '__main__':
 	main()
