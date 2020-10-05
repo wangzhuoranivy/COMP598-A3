@@ -81,36 +81,38 @@ def lookup (df, pony_speaker,pony_speaker_abbr):
 		
 		# determine keywords based on pony
 		if i == 'Twilight Sparkle':
-			keywords = ['Twilight','Sparkle']
 			n = 2
 		if i == 'Applejack':
-			keywords = ['Applejack']
 			n = 1
 		if i == 'Rarity':
-			keywords = ['Rarity']
 			n = 1
 		if i == 'Pinkie Pie':
-			keywords = ['Pinkie','Pie']
 			n = 2
 		if i == 'Rainbow Dash':
-			keywords = ['Rainbow','Dash']
 			n = 2
 		if i == 'Fluttershy':
-			keywords = ['Fluttershy']
 			n = 1
 
 		# filtered_df = dataframe where pony column has only pony_speaker
 		filtered_df = df[(df['pony'].str.lower()==pony_speaker.lower())]	
 		
+		pattern_i = f'(?<!\w){i}(?!\w)'
+		
 		# loop through keywords of a pony, get number of mentions(speaker,pony[i])
-		mention_count = filtered_df.dialog.str.count('|'.join(keywords)).sum()
-	
+		# n = 1: (eg.Fluttershy)
+		mention_count = (filtered_df.dialog.str.count(pattern_i)).sum()
+		
 		if n == 2:
-			mention_count = mention_count - filtered_df.dialog.str.count(i).sum()
+			# eg. Rainbow Dash
+			keywords_pattern = '|'.join(i.split(' '))
+			pattern_ii = f'(?<!\w)({keywords_pattern})(?!\w)'
+			# count(Pinkie) + count(Pie) - count(Pinkie Pie)
+			mention_count = (filtered_df.dialog.str.count(pattern_ii)).sum() - mention_count
+		
 		pony_count.append(mention_count)
 		
 	pony_count_ratio = []
-	
+
 	if sum(pony_count) == 0:
 		pony_count_ratio = [0,0,0,0,0]
 	else:
