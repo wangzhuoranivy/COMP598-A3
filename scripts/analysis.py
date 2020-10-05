@@ -39,8 +39,8 @@ def main():
 	dict_all = dict(verbosity=dict_1,mentions=dict_2,follow_on_comments=dict_3,non_dictionary_words=dict_4)
 
 	if args.o == None:
-		sys.stdout.write(dict_json)
 		dict_json = json.dumps(dict_all)
+		sys.stdout.write(dict_json)
         # if -o save to file
 	else:
 		with open(args.o, 'w') as output:
